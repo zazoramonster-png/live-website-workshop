@@ -19,13 +19,13 @@ textarea#editor{flex:1;min-width:0;resize:none;border:0;outline:0;background:#11
 .editor-foot{padding:7px 12px;color:var(--muted);font-size:12px;background:var(--panel);border-top:1px solid var(--line)}
 .preview-shell{position:relative;display:flex;flex:1;min-height:0;background:white}.preview-frame{width:100%;height:100%;border:0;background:white;flex:1}
 .empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:28px;color:#6b7788;background:#f7f9fc;pointer-events:none}.empty b{display:block;color:#39465a;font-size:18px;margin-bottom:7px}
-.file-label input{display:none}#fileInput{display:none}.fullscreen{position:fixed!important;inset:0!important;z-index:20;background:white!important}.fullscreen .pane-head{height:52px}.fullscreen .preview-shell{height:calc(100vh - 52px)}.hidden{display:none!important}
+.file-label input{display:none}#fileInput{display:block;width:220px;max-width:30vw;color:var(--text);font:12px system-ui,sans-serif}#fileInput::file-selector-button{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 10px;border-radius:8px;font:inherit;cursor:pointer;margin-right:8px}#fileInput::file-selector-button:hover{border-color:var(--accent);background:#29354a}.fullscreen{position:fixed!important;inset:0!important;z-index:20;background:white!important}.fullscreen .pane-head{height:52px}.fullscreen .preview-shell{height:calc(100vh - 52px)}.hidden{display:none!important}
 @media(max-width:760px){main{grid-template-columns:1fr;grid-template-rows:1fr 1fr}header{padding:0 8px;gap:5px}header button,.file-label{padding:7px 8px;font-size:12px}.status{display:none}}
 </style>
 </head>
 <body>
 <header><div class="brand">LIVE <span>WORKSHOP</span></div><span class="status" id="status">Ready · edits update the preview</span>
-<button id="importBtn" type="button">Import files</button><input id="fileInput" type="file" multiple accept=".html,.htm,.css,.js,.mjs,.txt,.json" style="display:none">
+<input id="fileInput" type="file" multiple accept=".html,.htm,.css,.js,.mjs,.txt,.json" aria-label="Import files">
 <button id="newBtn">New file</button><button id="downloadBtn" class="primary">Export files</button></header>
 <main id="workspace">
 <section class="pane" id="editorPane"><div class="pane-head"><strong>Code editor</strong><div class="tabs" id="tabs"></div></div>
@@ -54,7 +54,6 @@ function schedule(){clearTimeout(timer);$('status').textContent='Editing…';tim
 $('editor').addEventListener('input',()=>{save();lines();$('editorFoot').textContent=active+' · '+$('editor').value.length.toLocaleString()+' characters';schedule()});
 $('editor').addEventListener('scroll',()=>$('lineNumbers').scrollTop=$('editor').scrollTop);
 $('editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const a=e.target;a.setRangeText('  ',a.selectionStart,a.selectionEnd,'end');save();lines();schedule()}if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();preview()}});
-$('importBtn').addEventListener('click',()=> $('fileInput').click());
 async function importFiles(fileList){
   const picked=Array.from(fileList||[]);
   if(!picked.length)return;
