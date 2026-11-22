@@ -25,7 +25,7 @@ textarea#editor{flex:1;min-width:0;resize:none;border:0;outline:0;background:#11
 </head>
 <body>
 <header><div class="brand">LIVE <span>WORKSHOP</span></div><span class="status" id="status">Ready · edits update the preview</span>
-<label class="file-label">Import files<input id="fileInput" type="file" multiple accept=".html,.htm,.css,.js,.mjs,.txt,.json"></label>
+<button id="importBtn" type="button">Import files</button><input id="fileInput" type="file" multiple accept=".html,.htm,.css,.js,.mjs,.txt,.json" style="display:none">
 <button id="newBtn">New file</button><button id="downloadBtn" class="primary">Export files</button></header>
 <main id="workspace">
 <section class="pane" id="editorPane"><div class="pane-head"><strong>Code editor</strong><div class="tabs" id="tabs"></div></div>
@@ -54,7 +54,25 @@ function schedule(){clearTimeout(timer);$('status').textContent='Editing…';tim
 $('editor').addEventListener('input',()=>{save();lines();$('editorFoot').textContent=active+' · '+$('editor').value.length.toLocaleString()+' characters';schedule()});
 $('editor').addEventListener('scroll',()=>$('lineNumbers').scrollTop=$('editor').scrollTop);
 $('editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const a=e.target;a.setRangeText('  ',a.selectionStart,a.selectionEnd,'end');save();lines();schedule()}if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();preview()}});
-$('fileInput').addEventListener('change',async e=>{for(const f of e.target.files){files.set(f.name,await f.text());if(['html','htm'].includes(ext(f.name)))active=f.name}tabs();load();preview();e.target.value=''});
+$('importBtn').addEventListener('click',()=> $('fileInput').click());
+async function importFiles(fileList){
+  const picked=Array.from(fileList||[]);
+  if(!picked.length)return;
+  let imported=0;
+  for(const f of picked){
+    try{
+      const text=await f.text();
+      files.set(f.name,text);
+      if(['html','htm'].includes(ext(f.name)))active=f.name;
+      imported++;
+    }catch(err){console.error('Could not read file:',f.name,err)}
+  }
+  tabs();load();preview();
+  $('status').textContent=imported?('Imported '+imported+' file'+(imported===1?'':'s')):'Could not read those files';
+}
+$('fileInput').addEventListener('change',async e=>{await importFiles(e.target.files);e.target.value=''});
+$('workspace').addEventListener('dragover',e=>{e.preventDefault();$('status').textContent='Drop files to import'});
+$('workspace').addEventListener('drop',async e=>{e.preventDefault();await importFiles(e.dataTransfer.files)});
 $('newBtn').onclick=()=>{const name=prompt('New file name (for example: extra.css or app.js):');if(!name)return;if(files.has(name)){alert('A file with that name already exists.');return}files.set(name,'');active=name;tabs();load()};
 $('refreshBtn').onclick=preview;
 $('downloadBtn').onclick=()=>{save();for(const [name,data] of files){const blob=new Blob([data],{type:ext(name)==='css'?'text/css':['js','mjs'].includes(ext(name))?'text/javascript':'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}$('status').textContent='Export started · allow multiple downloads if prompted'};
