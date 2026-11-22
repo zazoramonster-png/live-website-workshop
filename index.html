@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Website Workshop</title>
+<style>
+:root{color-scheme:dark;--bg:#10131b;--panel:#191e2a;--panel2:#202737;--line:#30394b;--text:#edf2fb;--muted:#9aa8bd;--accent:#72a7ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,sans-serif;height:100vh;overflow:hidden}
+button,.file-label{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 12px;border-radius:8px;font:inherit;cursor:pointer}
+button:hover,.file-label:hover{border-color:var(--accent);background:#29354a}button.primary{background:#326bd0;border-color:#477fe0}
+header{height:58px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line);background:#151a24}
+.brand{font-weight:700;margin-right:auto}.brand span{color:var(--accent)}.status{color:var(--muted);font-size:12px}
+main{height:calc(100vh - 58px);display:grid;grid-template-columns:minmax(300px,1fr) minmax(300px,1fr);gap:1px;background:var(--line)}
+.pane{min-width:0;min-height:0;background:var(--bg);display:flex;flex-direction:column}.pane-head{height:48px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line)}.pane-head strong{margin-right:auto}
+.tabs{display:flex;gap:4px;overflow:auto}.tab{padding:7px 10px;border:0;background:transparent;color:var(--muted);white-space:nowrap}.tab.active{background:#2a3850;color:white}
+.editor-wrap{position:relative;flex:1;min-height:0;display:flex;background:#111722}.line-numbers{width:42px;flex:none;padding:13px 8px 13px 0;text-align:right;color:#64738a;overflow:hidden;white-space:pre;font:13px/1.55 ui-monospace,monospace;user-select:none}
+textarea#editor{flex:1;min-width:0;resize:none;border:0;outline:0;background:#111722;color:#e4ebf7;padding:13px 14px;font:13px/1.55 ui-monospace,monospace;tab-size:2;white-space:pre;overflow:auto}
+.editor-foot{padding:7px 12px;color:var(--muted);font-size:12px;background:var(--panel);border-top:1px solid var(--line)}
+.preview-shell{position:relative;display:flex;flex:1;min-height:0;background:white}.preview-frame{width:100%;height:100%;border:0;background:white;flex:1}
+.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:28px;color:#6b7788;background:#f7f9fc;pointer-events:none}.empty b{display:block;color:#39465a;font-size:18px;margin-bottom:7px}
+.file-label input{display:none}#fileInput{display:none}.fullscreen{position:fixed!important;inset:0!important;z-index:20;background:white!important}.fullscreen .pane-head{height:52px}.fullscreen .preview-shell{height:calc(100vh - 52px)}.hidden{display:none!important}
+@media(max-width:760px){main{grid-template-columns:1fr;grid-template-rows:1fr 1fr}header{padding:0 8px;gap:5px}header button,.file-label{padding:7px 8px;font-size:12px}.status{display:none}}
+</style>
+</head>
+<body>
+<header><div class="brand">LIVE <span>WORKSHOP</span></div><span class="status" id="status">Ready · edits update the preview</span>
+<label class="file-label">Import files<input id="fileInput" type="file" multiple accept=".html,.htm,.css,.js,.mjs,.txt,.json"></label>
+<button id="newBtn">New file</button><button id="downloadBtn" class="primary">Export files</button></header>
+<main id="workspace">
+<section class="pane" id="editorPane"><div class="pane-head"><strong>Code editor</strong><div class="tabs" id="tabs"></div></div>
+<div class="editor-wrap"><div class="line-numbers" id="lineNumbers">1</div><textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Code editor"></textarea></div>
+<div class="editor-foot" id="editorFoot">Import your HTML, CSS and JavaScript files to get started.</div></section>
+<section class="pane" id="previewPane"><div class="pane-head"><strong>Live preview</strong><button id="refreshBtn">Refresh</button><button id="fullscreenBtn" class="primary">Full screen</button></div>
+<div class="preview-shell"><iframe class="preview-frame" id="preview" title="Website preview" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe><div class="empty" id="empty"><div><b>Your website will appear here</b>Import an HTML file, or start with the sample project.<br>Changes in the editor update this preview automatically.</div></div></div></section>
+</main>
+<script>
+(()=>{
+const files=new Map();let active='';let timer;const $=id=>document.getElementById(id);
+const starterHTML='<!doctype html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>My first website</title>\n<link rel="stylesheet" href="style.css">\n</head>\n<body>\n<main class="card"><h1>Hello, world!</h1><p>Edit the HTML, CSS and JavaScript files and watch this page update.</p><button id="hello">Click me</button><p id="message"></p></main>\n<script src="script.js"><\\/script>\n</body>\n</html>';
+const starterCSS='body{margin:0;min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#dcecff,#f5e8ff);font-family:system-ui,sans-serif}.card{max-width:520px;margin:24px;padding:36px;border-radius:20px;background:white;box-shadow:0 18px 55px #263b6025}h1{color:#2857a4}button{border:0;border-radius:9px;padding:11px 18px;color:white;background:#326bd0;cursor:pointer}';
+const starterJS="document.querySelector('#hello').addEventListener('click',()=>{document.querySelector('#message').textContent='It works! Your JavaScript is running.';});";
+files.set('index.html',starterHTML);files.set('style.css',starterCSS);files.set('script.js',starterJS);active='index.html';
+const ext=n=>n.split('.').pop().toLowerCase();
+function save(){if(active&&files.has(active))files.set(active,$('editor').value)}
+function tabs(){const el=$('tabs');el.innerHTML='';for(const name of files.keys()){const b=document.createElement('button');b.className='tab'+(name===active?' active':'');b.textContent=name;b.onclick=()=>{save();active=name;tabs();load()};el.appendChild(b)}}
+function load(){$('editor').value=files.get(active)||'';$('editorFoot').textContent=active+' · '+$('editor').value.length.toLocaleString()+' characters';lines()}
+function lines(){const n=$('editor').value.split('\n').length;$('lineNumbers').textContent=Array.from({length:n},(_,i)=>i+1).join('\n');$('lineNumbers').scrollTop=$('editor').scrollTop}
+function preview(){save();const htmlName=[...files.keys()].find(n=>['html','htm'].includes(ext(n)));if(!htmlName){$('status').textContent='No HTML file found';return}let html=files.get(htmlName);
+for(const [name,code] of files){if(ext(name)==='css'){const safe=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');html=html.replace(new RegExp('<link\\b(?=[^>]*href=(["\\'])'+safe+'\\1)[^>]*>','gi'),'<style>\n'+code+'\n</style>')}}
+for(const [name,code] of files){if(['js','mjs'].includes(ext(name))){const safe=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');html=html.replace(new RegExp('<script\\b(?=[^>]*src=(["\\'])'+safe+'\\1)[^>]*><\\/script\\s*>','gi'),'<script>\n'+code+'\n<\\/script>')}}
+$('preview').srcdoc=html;$('empty').classList.add('hidden');$('status').textContent='Preview updated · '+new Date().toLocaleTimeString()}
+function schedule(){clearTimeout(timer);$('status').textContent='Editing…';timer=setTimeout(preview,350)}
+$('editor').addEventListener('input',()=>{save();lines();$('editorFoot').textContent=active+' · '+$('editor').value.length.toLocaleString()+' characters';schedule()});
+$('editor').addEventListener('scroll',()=>$('lineNumbers').scrollTop=$('editor').scrollTop);
+$('editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const a=e.target;a.setRangeText('  ',a.selectionStart,a.selectionEnd,'end');save();lines();schedule()}if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();preview()}});
+$('fileInput').addEventListener('change',async e=>{for(const f of e.target.files){files.set(f.name,await f.text());if(['html','htm'].includes(ext(f.name)))active=f.name}tabs();load();preview();e.target.value=''});
+$('newBtn').onclick=()=>{const name=prompt('New file name (for example: extra.css or app.js):');if(!name)return;if(files.has(name)){alert('A file with that name already exists.');return}files.set(name,'');active=name;tabs();load()};
+$('refreshBtn').onclick=preview;
+$('downloadBtn').onclick=()=>{save();for(const [name,data] of files){const blob=new Blob([data],{type:ext(name)==='css'?'text/css':['js','mjs'].includes(ext(name))?'text/javascript':'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}$('status').textContent='Export started · allow multiple downloads if prompted'};
+function fullscreen(on){$('previewPane').classList.toggle('fullscreen',on);$('editorPane').classList.toggle('hidden',on);$('fullscreenBtn').textContent=on?'Close full screen':'Full screen';$('workspace').style.display=on?'block':'grid'}
+$('fullscreenBtn').onclick=()=>fullscreen(!$('previewPane').classList.contains('fullscreen'));document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('previewPane').classList.contains('fullscreen'))fullscreen(false)});
+tabs();load();preview();
+})();
+</script>
+</body>
+</html>
